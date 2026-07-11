@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using PKHeX.Avalonia.Models;
@@ -62,8 +65,98 @@ public partial class MainWindow : Window
         PouchSelector.SelectionChanged += OnPouchChanged;
         ItemSetButton.Click += OnItemSetClick;
         InvApplyButton.Click += OnInventoryApplyClick;
+        DexSpeciesPicker.SelectionChanged += OnDexSpeciesChanged;
+        DexApplyButton.Click += OnDexApplyClick;
+        DexCompleteButton.Click += OnDexCompleteClick;
+        DexSeenAllButton.Click += OnDexSeenAllClick;
+        DexClearButton.Click += OnDexClearClick;
         BoxSelector.SelectionChanged += OnBoxChanged;
         SlotList.SelectionChanged += OnSlotSelected;
+
+        // Glisser-déposer entre emplacements
+        DragDrop.SetAllowDrop(SlotList, true);
+        SlotList.AddHandler(PointerPressedEvent, OnSlotPointerPressed, RoutingStrategies.Tunnel);
+        SlotList.AddHandler(PointerMovedEvent, OnSlotPointerMoved, RoutingStrategies.Tunnel);
+        SlotList.AddHandler(DragDrop.DragOverEvent, OnSlotDragOver);
+        SlotList.AddHandler(DragDrop.DropEvent, OnSlotDrop);
+    }
+
+    // ---- Glisser-déposer ----
+    private SlotEntry? _pressedEntry;
+    private Point _pressPos;
+
+    private void OnSlotPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _pressedEntry = FindEntry(e.Source);
+        _pressPos = e.GetPosition(null);
+    }
+
+    private async void OnSlotPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_pressedEntry is null)
+            return;
+        if (!e.GetCurrentPoint(SlotList).Properties.IsLeftButtonPressed)
+        {
+            _pressedEntry = null;
+            return;
+        }
+        var pos = e.GetPosition(null);
+        if (Math.Abs(pos.X - _pressPos.X) < 5 && Math.Abs(pos.Y - _pressPos.Y) < 5)
+            return;
+
+        var source = _pressedEntry;
+        _pressedEntry = null;
+        if (source.IsEmpty)
+            return;
+
+        var data = new DataObject();
+        data.Set("pkhex/slot", source);
+        await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+    }
+
+    private void OnSlotDragOver(object? sender, DragEventArgs e)
+        => e.DragEffects = e.Data.Contains("pkhex/slot") ? DragDropEffects.Move : DragDropEffects.None;
+
+    private void OnSlotDrop(object? sender, DragEventArgs e)
+    {
+        if (_sav is not { } sav)
+            return;
+        if (e.Data.Get("pkhex/slot") is not SlotEntry source)
+            return;
+        var target = FindEntry(e.Source);
+        if (target is null || ReferenceEquals(target, source))
+            return;
+
+        // Échange les deux emplacements (clones pour éviter l'aliasing).
+        var a = source.Entity.Clone();
+        var b = target.Entity.Clone();
+        SetSlot(sav, target, a);
+        SetSlot(sav, source, b);
+
+        int keep = SlotList.SelectedIndex;
+        OnBoxChanged(null, null!);
+        SlotList.SelectedIndex = keep;
+        Status("Emplacements échangés.");
+    }
+
+    private static void SetSlot(SaveFile sav, SlotEntry s, PKM pk)
+    {
+        if (s.IsParty)
+            sav.SetPartySlotAtIndex(pk, s.Slot);
+        else
+            sav.SetBoxSlotAtIndex(pk, s.Box, s.Slot);
+    }
+
+    private static SlotEntry? FindEntry(object? source)
+    {
+        var c = source as Control;
+        while (c is not null)
+        {
+            if (c.DataContext is SlotEntry se)
+                return se;
+            c = c.Parent as Control;
+        }
+        return null;
     }
 
     private async void OnOpenClick(object? sender, RoutedEventArgs e)
@@ -162,7 +255,184 @@ public partial class MainWindow : Window
         // Onglet Inventaire
         LoadInventory(sav);
 
+        // Onglet Pokédex
+        LoadPokedex(sav);
+
         Status($"Sauvegarde chargée : {Path.GetFileName(_path) ?? sav.Version.ToString()}");
+    }
+
+    private void LoadPokedex(SaveFile sav)
+    {
+        if (!sav.HasPokeDex)
+        {
+            DexPanel.IsEnabled = false;
+            DexCounts.Text = "Cette sauvegarde n'a pas de Pokédex pris en charge.";
+            return;
+        }
+        DexPanel.IsEnabled = true;
+
+        var names = new List<string>();
+        for (ushort i = 1; i <= sav.MaxSpeciesID; i++)
+            names.Add(i < _species.Count ? $"{i:000} {_species[i]}" : $"{i:000}");
+        DexSpeciesPicker.ItemsSource = names;
+        DexSpeciesPicker.SelectedIndex = 0;
+        RefreshDexCounts(sav);
+    }
+
+    private void RefreshDexCounts(SaveFile sav)
+        => DexCounts.Text = $"Vus : {sav.SeenCount} / {sav.MaxSpeciesID}   ·   Capturés : {sav.CaughtCount} / {sav.MaxSpeciesID}";
+
+    private void OnDexSpeciesChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_sav is not { } sav || DexSpeciesPicker.SelectedIndex < 0)
+            return;
+        var species = (ushort)(DexSpeciesPicker.SelectedIndex + 1);
+        DexSeen.IsChecked = sav.GetSeen(species);
+        DexCaught.IsChecked = sav.GetCaught(species);
+    }
+
+    // Le Pokédex est spécifique à chaque génération : le dex Gen5 (Zukan5), Gen6+ (ZukanBase<T>) et
+    // Gen1/2 (SaveFile.SetSeen/SetCaught) ont des API incompatibles. On invoque au mieux, par réflexion,
+    // la première méthode connue disponible sur l'objet "Zukan", en remplissant ses paramètres par défaut.
+    private static object? GetZukan(SaveFile sav) => sav.GetType().GetProperty("Zukan")?.GetValue(sav);
+
+    private static object? DefaultArg(Type t)
+        => t.IsValueType ? Activator.CreateInstance(t) : null;
+
+    private static bool TryInvokeZukan(SaveFile sav, params string[] methodNames)
+    {
+        var zukan = GetZukan(sav);
+        if (zukan is null)
+            return false;
+        foreach (var name in methodNames)
+        {
+            var mi = zukan.GetType()
+                .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == name);
+            if (mi is null)
+                continue;
+            var args = Array.ConvertAll(mi.GetParameters(),
+                p => p.HasDefaultValue ? p.DefaultValue : DefaultArg(p.ParameterType));
+            mi.Invoke(zukan, args);
+            return true;
+        }
+        return false;
+    }
+
+    // Invoque une méthode par-espèce (species + éventuels paramètres par défaut).
+    private static bool TryInvokeZukanSpecies(SaveFile sav, ushort species, params string[] methodNames)
+    {
+        var zukan = GetZukan(sav);
+        if (zukan is null)
+            return false;
+        foreach (var name in methodNames)
+        {
+            var mi = zukan.GetType()
+                .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == name && m.GetParameters().Length > 0
+                    && m.GetParameters()[0].ParameterType == typeof(ushort));
+            if (mi is null)
+                continue;
+            var ps = mi.GetParameters();
+            var args = new object?[ps.Length];
+            args[0] = species;
+            for (int i = 1; i < ps.Length; i++)
+                args[i] = ps[i].HasDefaultValue ? ps[i].DefaultValue : DefaultArg(ps[i].ParameterType);
+            mi.Invoke(zukan, args);
+            return true;
+        }
+        return false;
+    }
+
+    private void OnDexApplyClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav || DexSpeciesPicker.SelectedIndex < 0)
+            return;
+        var species = (ushort)(DexSpeciesPicker.SelectedIndex + 1);
+        bool caught = DexCaught.IsChecked == true;
+        int before = sav.CaughtCount;
+
+        if (caught)
+        {
+            // Gen6+ : SetDexEntryAll ; Gen5 : GiveAll/SetCaught ; sinon repli base.
+            if (!TryInvokeZukanSpecies(sav, species, "SetDexEntryAll", "GiveAll", "SetDex", "SetCaught"))
+                sav.SetCaught(species, true);
+        }
+        else
+        {
+            if (!TryInvokeZukanSpecies(sav, species, "ClearDexEntryAll", "ClearSeen"))
+                sav.SetCaught(species, false);
+        }
+
+        RefreshDexCounts(sav);
+        OnDexSpeciesChanged(null, null!);
+        Status($"Pokédex mis à jour pour {_species[species]} (capturés {before} → {sav.CaughtCount}).");
+    }
+
+    private void OnDexCompleteClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav)
+            return;
+        // Gen6+ : CompleteDex. Gen5 : SeenAll + CaughtAll. Repli : boucle base.
+        bool ok = TryInvokeZukan(sav, "CompleteDex");
+        if (!ok)
+        {
+            bool a = TryInvokeZukan(sav, "SeenAll", "SetAllSeen");
+            bool b = TryInvokeZukan(sav, "CaughtAll");
+            ok = a || b;
+        }
+        if (!ok)
+        {
+            for (ushort i = 1; i <= sav.MaxSpeciesID; i++)
+            {
+                sav.SetSeen(i, true);
+                sav.SetCaught(i, true);
+            }
+        }
+        RefreshDexCounts(sav);
+        OnDexSpeciesChanged(null, null!);
+        ReportDex(sav, "Pokédex complété");
+    }
+
+    private void OnDexSeenAllClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav)
+            return;
+        if (!TryInvokeZukan(sav, "SeenAll", "SetAllSeen"))
+        {
+            for (ushort i = 1; i <= sav.MaxSpeciesID; i++)
+                sav.SetSeen(i, true);
+        }
+        RefreshDexCounts(sav);
+        OnDexSpeciesChanged(null, null!);
+        ReportDex(sav, "Toutes les espèces marquées vues");
+    }
+
+    private void OnDexClearClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav)
+            return;
+        bool z = TryInvokeZukan(sav, "SeenNone");
+        TryInvokeZukan(sav, "CaughtNone");
+        if (!z)
+        {
+            for (ushort i = 1; i <= sav.MaxSpeciesID; i++)
+            {
+                sav.SetCaught(i, false);
+                sav.SetSeen(i, false);
+            }
+        }
+        RefreshDexCounts(sav);
+        OnDexSpeciesChanged(null, null!);
+        ReportDex(sav, "Pokédex effacé");
+    }
+
+    private void ReportDex(SaveFile sav, string action)
+    {
+        if (sav.CaughtCount == 0 && sav.SeenCount == 0 && action != "Pokédex effacé")
+            Status($"{action} : aucun changement — génération peut-être non prise en charge.");
+        else
+            Status($"{action}. Vus={sav.SeenCount}, Capturés={sav.CaughtCount}.");
     }
 
     private void LoadInventory(SaveFile sav)

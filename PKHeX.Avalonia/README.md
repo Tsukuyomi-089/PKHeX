@@ -33,9 +33,10 @@ dotnet run --project PKHeX.Avalonia/PKHeX.Avalonia.csproj -c Release
 - Bouton **✨ Rendre chromatique**
 - **Analyse de légalité** en direct (`LegalityAnalysis`) avec rapport détaillé
 - **Import / Export d'un Pokémon** (`.pk*`) avec conversion automatique au format de la save
-- **Vider un emplacement** (🗑)
+- **Vider un emplacement** (🗑) et **glisser-déposer** pour échanger deux emplacements
 - Onglet **Dresseur** : nom OT, TID/SID, genre, argent, temps de jeu
 - Onglet **Inventaire** : édition des poches (ajout / modification / retrait d'objets)
+- Onglet **Pokédex** : compteurs vus/capturés, éditer une espèce, compléter / tout marquer vu / effacer
 - 💾 Exporter la sauvegarde modifiée
 
 Noms (espèces, natures, talents, objets, capacités) affichés en **français**.
@@ -49,7 +50,10 @@ et décodés par **SkiaSharp** via `Avalonia.Media.Imaging.Bitmap` — on contou
 ## Périmètre / limites
 
 Base de portage ciblée sur les cas d'usage principaux, **pas** un portage 1:1 des 154 formulaires
-WinForms. Manquent encore : éditeur de Pokédex, glisser-déposer entre slots, édition en masse
-(batch), légalisation automatique (nécessite le paquet externe *AutoLegalityMod*, absent de
-`PKHeX.Core`). Chaque ajout consiste à brancher des contrôles Avalonia sur les propriétés/API de
+WinForms. Manquent encore : édition en masse (batch), légalisation automatique (nécessite le paquet
+externe *AutoLegalityMod*, absent de `PKHeX.Core`), et des éditeurs avancés (événements, records…).
+
+Le Pokédex est spécifique à chaque génération (API `Zukan` distinctes) : l'implémentation invoque
+au mieux la bonne méthode par réflexion. La barre de statut signale si une génération n'est pas
+prise en charge par une action donnée. Chaque ajout consiste à brancher des contrôles Avalonia sur les propriétés/API de
 `PKHeX.Core` déjà disponibles.
