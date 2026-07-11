@@ -58,6 +58,7 @@ public partial class MainWindow : Window
         SaveButton.Click += OnSaveClick;
         ApplyButton.Click += OnApplyClick;
         ShinyButton.Click += OnShinyClick;
+        LegalizeButton.Click += OnLegalizeClick;
         ImportButton.Click += OnImportClick;
         ExportButton.Click += OnExportClick;
         ClearButton.Click += OnClearSlotClick;
@@ -70,6 +71,7 @@ public partial class MainWindow : Window
         DexCompleteButton.Click += OnDexCompleteClick;
         DexSeenAllButton.Click += OnDexSeenAllClick;
         DexClearButton.Click += OnDexClearClick;
+        BatchRunButton.Click += OnBatchRunClick;
         BoxSelector.SelectionChanged += OnBoxChanged;
         SlotList.SelectionChanged += OnSlotSelected;
 
@@ -258,7 +260,98 @@ public partial class MainWindow : Window
         // Onglet Pokédex
         LoadPokedex(sav);
 
+        // Onglet Batch
+        BatchPanel.IsEnabled = true;
+        BatchScope.ItemsSource = new[] { "Boîte courante", "Toutes les boîtes", "Équipe" };
+        BatchScope.SelectedIndex = 0;
+
         Status($"Sauvegarde chargée : {Path.GetFileName(_path) ?? sav.Version.ToString()}");
+    }
+
+    private readonly record struct SlotRef(int Box, int Slot, bool IsParty, PKM Entity);
+
+    private List<SlotRef> GetBatchScope(SaveFile sav)
+    {
+        var list = new List<SlotRef>();
+        switch (BatchScope.SelectedIndex)
+        {
+            case 2: // Équipe
+                for (int s = 0; s < sav.PartyCount; s++)
+                    Add(list, -1, s, true, sav.GetPartySlotAtIndex(s));
+                break;
+            case 1: // Toutes les boîtes
+                for (int b = 0; b < sav.BoxCount; b++)
+                    for (int s = 0; s < sav.BoxSlotCount; s++)
+                        Add(list, b, s, false, sav.GetBoxSlotAtIndex(b, s));
+                break;
+            default: // Boîte courante
+                int box = BoxSelector.SelectedIndex;
+                if (sav.HasParty && box == sav.BoxCount) // "Équipe" sélectionnée dans l'onglet Pokémon
+                {
+                    for (int s = 0; s < sav.PartyCount; s++)
+                        Add(list, -1, s, true, sav.GetPartySlotAtIndex(s));
+                }
+                else if (box >= 0)
+                {
+                    for (int s = 0; s < sav.BoxSlotCount; s++)
+                        Add(list, box, s, false, sav.GetBoxSlotAtIndex(box, s));
+                }
+                break;
+        }
+        return list;
+
+        static void Add(List<SlotRef> l, int b, int s, bool party, PKM pk)
+        {
+            if (pk.Species != 0)
+                l.Add(new SlotRef(b, s, party, pk));
+        }
+    }
+
+    private void OnBatchRunClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav)
+            return;
+        var text = BatchInput.Text ?? string.Empty;
+        var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (lines.Length == 0)
+        {
+            BatchResults.Text = "Aucune instruction.";
+            return;
+        }
+
+        var scope = GetBatchScope(sav);
+        if (scope.Count == 0)
+        {
+            BatchResults.Text = "Aucun Pokémon dans la portée choisie.";
+            return;
+        }
+
+        try
+        {
+            var pkms = scope.ConvertAll(x => x.Entity);
+            var proc = EntityBatchProcessor.Execute(lines, pkms);
+            var sets = StringInstructionSet.GetBatchSets(lines);
+
+            // Réécriture des entités modifiées dans la sauvegarde.
+            foreach (var s in scope)
+            {
+                s.Entity.RefreshChecksum();
+                SetSlot(sav, new SlotEntry(s.Box, s.Slot, s.IsParty, s.Entity, ""), s.Entity);
+            }
+
+            BatchResults.Text = proc.GetEditorResults(sets);
+
+            // Rafraîchit la vue courante
+            int keep = SlotList.SelectedIndex;
+            OnBoxChanged(null, null!);
+            if (keep >= 0)
+                SlotList.SelectedIndex = keep;
+            Status("Édition en masse appliquée (Exporter pour enregistrer).");
+        }
+        catch (Exception ex)
+        {
+            BatchResults.Text = $"Erreur : {ex.Message}";
+        }
     }
 
     private void LoadPokedex(SaveFile sav)
@@ -818,6 +911,53 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Status($"Erreur d'import .pk : {ex.Message}");
+        }
+    }
+
+    // Légalisation best-effort : applique les corrections « intelligentes » de PKHeX.Core
+    // (moveset, relearn, lieu de capture, amitié, Ball, PP, stats) via le moteur batch.
+    // Ce n'est pas l'AutoLegalityMod complet (qui reconstruit un encounter légal) : cela corrige
+    // les incohérences courantes d'un Pokémon déjà proche du légal.
+    private static readonly string[] LegalizeLines =
+    [
+        ".Moves=$suggest",
+        ".RelearnMoves=$suggest",
+        ".MetLocation=$suggest",
+        ".CurrentFriendship=$suggest",
+        ".Ball=$suggest",
+        ".HealPP=$suggest",
+        ".Stats=$suggest",
+    ];
+
+    private void OnLegalizeClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav || _current is not { } entry || entry.Entity is not { } pk)
+            return;
+        try
+        {
+            EntityBatchProcessor.Execute(LegalizeLines, new[] { pk });
+            pk.RefreshChecksum();
+            if (entry.IsParty)
+                sav.SetPartySlotAtIndex(pk, entry.Slot);
+            else
+                sav.SetBoxSlotAtIndex(pk, entry.Box, entry.Slot);
+
+            LoadEditor(pk);
+            RefreshLegality(pk);
+
+            int keep = SlotList.SelectedIndex;
+            OnBoxChanged(null, null!);
+            if (keep >= 0)
+                SlotList.SelectedIndex = keep;
+
+            var la = new LegalityAnalysis(pk);
+            Status(la.Valid
+                ? "Légalisation best-effort : ✅ le Pokémon est maintenant légal."
+                : "Légalisation best-effort appliquée — quelques problèmes subsistent (voir rapport).");
+        }
+        catch (Exception ex)
+        {
+            Status($"Erreur de légalisation : {ex.Message}");
         }
     }
 

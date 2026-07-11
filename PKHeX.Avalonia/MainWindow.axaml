@@ -50,9 +50,12 @@
             <!-- En-tête : sprite + nom -->
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Image x:Name="EditorSprite" Width="96" Height="80" Stretch="Uniform" />
-              <StackPanel VerticalAlignment="Center">
+              <StackPanel VerticalAlignment="Center" Spacing="6">
                 <TextBlock x:Name="EditorTitle" FontSize="18" FontWeight="Bold" Text="Éditeur" />
-                <Button x:Name="ShinyButton" Content="✨ Rendre chromatique" Margin="0,6,0,0" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button x:Name="ShinyButton" Content="✨ Rendre chromatique" />
+                  <Button x:Name="LegalizeButton" Content="🔧 Légaliser (best-effort)" />
+                </StackPanel>
               </StackPanel>
             </StackPanel>
 
@@ -252,6 +255,25 @@
           </Border>
         </StackPanel>
       </ScrollViewer>
+    </TabItem>
+
+    <!-- Onglet Batch (édition en masse) -->
+    <TabItem Header="Batch">
+      <Grid x:Name="BatchPanel" Margin="16" IsEnabled="False" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" ColumnDefinitions="*">
+        <TextBlock Grid.Row="0" Text="Édition en masse" FontSize="18" FontWeight="Bold" />
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.8" Margin="0,4,0,8"
+                   Text="Syntaxe PKHeX : une instruction par ligne, ex. « .Level=100 », « .IVs=31 », « .Nature=Timid ». Filtres sans point, ex. « Species=25 ». Ligne vide = nouveau bloc filtres/instructions." />
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBlock Text="Portée :" VerticalAlignment="Center" />
+          <ComboBox x:Name="BatchScope" Width="220" />
+        </StackPanel>
+        <TextBox Grid.Row="3" x:Name="BatchInput" AcceptsReturn="True" TextWrapping="NoWrap"
+                 MinHeight="200" FontFamily="monospace"
+                 Watermark=".Level=100&#x0a;.IVs=31" />
+        <Button Grid.Row="4" x:Name="BatchRunButton" Content="▶ Exécuter" HorizontalAlignment="Left" Margin="0,10,0,0" />
+        <TextBox Grid.Row="5" x:Name="BatchResults" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                 Background="Transparent" BorderThickness="0" Margin="0,10,0,0" MinHeight="60" />
+      </Grid>
     </TabItem>
     </TabControl>
 
