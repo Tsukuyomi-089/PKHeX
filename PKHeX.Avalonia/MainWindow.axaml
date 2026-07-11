@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:PKHeX.Avalonia.Models"
         x:Class="PKHeX.Avalonia.MainWindow"
-        Width="900" Height="600"
+        Width="1180" Height="720"
         Title="PKHeX (Avalonia · natif Linux)">
 
   <Grid RowDefinitions="Auto,*,Auto">
@@ -9,58 +10,188 @@
     <!-- Barre d'outils -->
     <Border Grid.Row="0" Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button x:Name="OpenButton" Content="📂 Ouvrir une sauvegarde…" />
+        <Button x:Name="OpenButton" Content="📂 Ouvrir…" />
         <Button x:Name="SaveButton" Content="💾 Exporter…" IsEnabled="False" />
         <Separator />
-        <TextBlock x:Name="SaveInfo" VerticalAlignment="Center"
-                   Text="Aucune sauvegarde chargée." />
+        <TextBlock x:Name="SaveInfo" VerticalAlignment="Center" Text="Aucune sauvegarde chargée." />
       </StackPanel>
     </Border>
 
-    <!-- Contenu principal -->
-    <Grid Grid.Row="1" ColumnDefinitions="320,*" Margin="8">
+    <!-- Contenu principal : onglets -->
+    <TabControl Grid.Row="1" Margin="4">
+    <TabItem Header="Pokémon">
+    <!-- liste | éditeur | légalité -->
+    <Grid ColumnDefinitions="330,*,320" Margin="8">
 
-      <!-- Panneau gauche : sélection de boîte + liste -->
+      <!-- Colonne 1 : boîtes + liste avec sprites -->
       <DockPanel Grid.Column="0" Margin="0,0,8,0">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
           <TextBlock Text="Boîte :" VerticalAlignment="Center" />
           <ComboBox x:Name="BoxSelector" Width="220" IsEnabled="False" />
         </StackPanel>
-        <ListBox x:Name="SlotList" />
+        <ListBox x:Name="SlotList">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="models:SlotEntry">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Image Source="{Binding Image}" Width="50" Height="42" Stretch="Uniform" />
+                <TextBlock Text="{Binding Text}" VerticalAlignment="Center" TextWrapping="NoWrap" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
       </DockPanel>
 
-      <!-- Panneau droit : éditeur -->
+      <!-- Colonne 2 : éditeur -->
       <Border Grid.Column="1" BorderThickness="1" CornerRadius="6"
-              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" Padding="16">
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" Padding="14" Margin="0,0,8,0">
         <ScrollViewer>
-          <StackPanel x:Name="EditorPanel" Spacing="12" IsEnabled="False">
-            <TextBlock Text="Éditeur de Pokémon" FontSize="18" FontWeight="Bold" />
+          <StackPanel x:Name="EditorPanel" Spacing="10" IsEnabled="False">
 
-            <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
-              <TextBlock Grid.Row="0" Grid.Column="0" Text="Espèce" VerticalAlignment="Center" Margin="0,5" />
-              <ComboBox   Grid.Row="0" Grid.Column="1" x:Name="SpeciesBox" HorizontalAlignment="Stretch" Margin="0,5" />
+            <!-- En-tête : sprite + nom -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Image x:Name="EditorSprite" Width="96" Height="80" Stretch="Uniform" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="EditorTitle" FontSize="18" FontWeight="Bold" Text="Éditeur" />
+                <Button x:Name="ShinyButton" Content="✨ Rendre chromatique" Margin="0,6,0,0" />
+              </StackPanel>
+            </StackPanel>
 
-              <TextBlock Grid.Row="1" Grid.Column="0" Text="Niveau" VerticalAlignment="Center" Margin="0,5" />
-              <NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="LevelBox" Minimum="1" Maximum="100" Increment="1" Margin="0,5" />
-
-              <TextBlock Grid.Row="2" Grid.Column="0" Text="Surnom" VerticalAlignment="Center" Margin="0,5" />
-              <TextBox    Grid.Row="2" Grid.Column="1" x:Name="NicknameBox" Margin="0,5" />
-
-              <TextBlock Grid.Row="3" Grid.Column="0" Text="Nature" VerticalAlignment="Center" Margin="0,5" />
-              <ComboBox   Grid.Row="3" Grid.Column="1" x:Name="NatureBox" HorizontalAlignment="Stretch" Margin="0,5" />
-
-              <TextBlock Grid.Row="4" Grid.Column="0" Text="Dresseur (OT)" VerticalAlignment="Center" Margin="0,5" />
-              <TextBox    Grid.Row="4" Grid.Column="1" x:Name="OtBox" Margin="0,5" />
-
-              <TextBlock Grid.Row="5" Grid.Column="0" Text="Chromatique" VerticalAlignment="Center" Margin="0,5" />
-              <TextBlock  Grid.Row="5" Grid.Column="1" x:Name="ShinyLabel" VerticalAlignment="Center" Margin="0,5" />
+            <!-- Identité -->
+            <TextBlock Text="Identité" FontWeight="Bold" Margin="0,4,0,0" />
+            <Grid ColumnDefinitions="90,*,70,90" >
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Espèce" VerticalAlignment="Center" Margin="0,4" />
+              <ComboBox   Grid.Row="0" Grid.Column="1" x:Name="SpeciesBox" HorizontalAlignment="Stretch" Margin="0,4,8,4" />
+              <TextBlock Grid.Row="0" Grid.Column="2" Text="Forme" VerticalAlignment="Center" Margin="0,4" />
+              <NumericUpDown Grid.Row="0" Grid.Column="3" x:Name="FormBox" Minimum="0" Maximum="64" Margin="0,4" />
+            </Grid>
+            <Grid ColumnDefinitions="90,*,70,90">
+              <TextBlock Grid.Column="0" Text="Niveau" VerticalAlignment="Center" Margin="0,4" />
+              <NumericUpDown Grid.Column="1" x:Name="LevelBox" Minimum="1" Maximum="100" Margin="0,4,8,4" />
+              <TextBlock Grid.Column="2" Text="Genre" VerticalAlignment="Center" Margin="0,4" />
+              <ComboBox   Grid.Column="3" x:Name="GenderBox" HorizontalAlignment="Stretch" Margin="0,4" />
+            </Grid>
+            <Grid ColumnDefinitions="90,*">
+              <TextBlock Grid.Column="0" Text="Surnom" VerticalAlignment="Center" Margin="0,4" />
+              <TextBox    Grid.Column="1" x:Name="NicknameBox" Margin="0,4" />
+            </Grid>
+            <Grid ColumnDefinitions="90,*">
+              <TextBlock Grid.Column="0" Text="Dresseur" VerticalAlignment="Center" Margin="0,4" />
+              <TextBox    Grid.Column="1" x:Name="OtBox" Margin="0,4" />
             </Grid>
 
-            <Button x:Name="ApplyButton" Content="✔ Appliquer au slot" HorizontalAlignment="Left" />
+            <!-- Caractéristiques -->
+            <TextBlock Text="Caractéristiques" FontWeight="Bold" Margin="0,6,0,0" />
+            <Grid ColumnDefinitions="90,*">
+              <TextBlock Grid.Column="0" Text="Nature" VerticalAlignment="Center" Margin="0,4" />
+              <ComboBox   Grid.Column="1" x:Name="NatureBox" HorizontalAlignment="Stretch" Margin="0,4" />
+            </Grid>
+            <Grid ColumnDefinitions="90,*">
+              <TextBlock Grid.Column="0" Text="Talent" VerticalAlignment="Center" Margin="0,4" />
+              <ComboBox   Grid.Column="1" x:Name="AbilityBox" HorizontalAlignment="Stretch" Margin="0,4" />
+            </Grid>
+            <Grid ColumnDefinitions="90,*">
+              <TextBlock Grid.Column="0" Text="Objet tenu" VerticalAlignment="Center" Margin="0,4" />
+              <ComboBox   Grid.Column="1" x:Name="ItemBox" HorizontalAlignment="Stretch" Margin="0,4" />
+            </Grid>
+            <Grid ColumnDefinitions="90,*,70,90">
+              <TextBlock Grid.Column="0" Text="Ball" VerticalAlignment="Center" Margin="0,4" />
+              <ComboBox   Grid.Column="1" x:Name="BallBox" HorizontalAlignment="Stretch" Margin="0,4,8,4" />
+              <TextBlock Grid.Column="2" Text="Amitié" VerticalAlignment="Center" Margin="0,4" />
+              <NumericUpDown Grid.Column="3" x:Name="FriendshipBox" Minimum="0" Maximum="255" Margin="0,4" />
+            </Grid>
+
+            <!-- Capacités -->
+            <TextBlock Text="Capacités" FontWeight="Bold" Margin="0,6,0,0" />
+            <ComboBox x:Name="Move1Box" HorizontalAlignment="Stretch" Margin="0,3" />
+            <ComboBox x:Name="Move2Box" HorizontalAlignment="Stretch" Margin="0,3" />
+            <ComboBox x:Name="Move3Box" HorizontalAlignment="Stretch" Margin="0,3" />
+            <ComboBox x:Name="Move4Box" HorizontalAlignment="Stretch" Margin="0,3" />
+
+            <!-- Stats -->
+            <TextBlock Text="IV / EV" FontWeight="Bold" Margin="0,6,0,0" />
+            <Grid ColumnDefinitions="60,*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="IV" HorizontalAlignment="Center" FontWeight="SemiBold" />
+              <TextBlock Grid.Row="0" Grid.Column="2" Text="EV" HorizontalAlignment="Center" FontWeight="SemiBold" />
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="PV"  VerticalAlignment="Center" Margin="0,3" />
+              <NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="IvHp"  Minimum="0" Maximum="31"  Margin="2" />
+              <NumericUpDown Grid.Row="1" Grid.Column="2" x:Name="EvHp"  Minimum="0" Maximum="252" Margin="2" />
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Att" VerticalAlignment="Center" Margin="0,3" />
+              <NumericUpDown Grid.Row="2" Grid.Column="1" x:Name="IvAtk" Minimum="0" Maximum="31"  Margin="2" />
+              <NumericUpDown Grid.Row="2" Grid.Column="2" x:Name="EvAtk" Minimum="0" Maximum="252" Margin="2" />
+
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="Déf" VerticalAlignment="Center" Margin="0,3" />
+              <NumericUpDown Grid.Row="3" Grid.Column="1" x:Name="IvDef" Minimum="0" Maximum="31"  Margin="2" />
+              <NumericUpDown Grid.Row="3" Grid.Column="2" x:Name="EvDef" Minimum="0" Maximum="252" Margin="2" />
+
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="AtS" VerticalAlignment="Center" Margin="0,3" />
+              <NumericUpDown Grid.Row="4" Grid.Column="1" x:Name="IvSpa" Minimum="0" Maximum="31"  Margin="2" />
+              <NumericUpDown Grid.Row="4" Grid.Column="2" x:Name="EvSpa" Minimum="0" Maximum="252" Margin="2" />
+
+              <TextBlock Grid.Row="5" Grid.Column="0" Text="DéS" VerticalAlignment="Center" Margin="0,3" />
+              <NumericUpDown Grid.Row="5" Grid.Column="1" x:Name="IvSpd" Minimum="0" Maximum="31"  Margin="2" />
+              <NumericUpDown Grid.Row="5" Grid.Column="2" x:Name="EvSpd" Minimum="0" Maximum="252" Margin="2" />
+
+              <TextBlock Grid.Row="6" Grid.Column="0" Text="Vit" VerticalAlignment="Center" Margin="0,3" />
+              <NumericUpDown Grid.Row="6" Grid.Column="1" x:Name="IvSpe" Minimum="0" Maximum="31"  Margin="2" />
+              <NumericUpDown Grid.Row="6" Grid.Column="2" x:Name="EvSpe" Minimum="0" Maximum="252" Margin="2" />
+            </Grid>
+
+            <Button x:Name="ApplyButton" Content="✔ Appliquer au slot" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch">
+              <Button x:Name="ImportButton" Content="⬇ Importer .pk…" />
+              <Button x:Name="ExportButton" Content="⬆ Exporter .pk…" />
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </Border>
+
+      <!-- Colonne 3 : légalité -->
+      <Border Grid.Column="2" BorderThickness="1" CornerRadius="6"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" Padding="14">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="Analyse de légalité" FontSize="16" FontWeight="Bold" />
+          <TextBlock DockPanel.Dock="Top" x:Name="LegalityStatus" Margin="0,6,0,6" FontWeight="Bold" Text="—" TextWrapping="Wrap" />
+          <TextBox x:Name="LegalityReport" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                   VerticalAlignment="Stretch" Background="Transparent" BorderThickness="0" />
+        </DockPanel>
+      </Border>
     </Grid>
+    </TabItem>
+
+    <!-- Onglet Dresseur -->
+    <TabItem Header="Dresseur">
+      <ScrollViewer>
+        <StackPanel x:Name="TrainerPanel" Spacing="10" Margin="16" MaxWidth="520" HorizontalAlignment="Left" IsEnabled="False">
+          <TextBlock Text="Informations du dresseur" FontSize="18" FontWeight="Bold" />
+          <Grid ColumnDefinitions="140,*">
+            <TextBlock Grid.Column="0" Text="Nom (OT)" VerticalAlignment="Center" Margin="0,4" />
+            <TextBox    Grid.Column="1" x:Name="TrOtBox" Margin="0,4" />
+          </Grid>
+          <Grid ColumnDefinitions="140,*,140,*">
+            <TextBlock Grid.Column="0" Text="TID" VerticalAlignment="Center" Margin="0,4" />
+            <NumericUpDown Grid.Column="1" x:Name="TrTidBox" Minimum="0" Maximum="9999999" Margin="0,4,8,4" />
+            <TextBlock Grid.Column="2" Text="SID" VerticalAlignment="Center" Margin="0,4" />
+            <NumericUpDown Grid.Column="3" x:Name="TrSidBox" Minimum="0" Maximum="9999999" Margin="0,4" />
+          </Grid>
+          <Grid ColumnDefinitions="140,*,140,*">
+            <TextBlock Grid.Column="0" Text="Genre" VerticalAlignment="Center" Margin="0,4" />
+            <ComboBox   Grid.Column="1" x:Name="TrGenderBox" HorizontalAlignment="Stretch" Margin="0,4,8,4" />
+            <TextBlock Grid.Column="2" Text="Argent" VerticalAlignment="Center" Margin="0,4" />
+            <NumericUpDown Grid.Column="3" x:Name="TrMoneyBox" Minimum="0" Maximum="9999999" Margin="0,4" />
+          </Grid>
+          <Grid ColumnDefinitions="140,*,140,*">
+            <TextBlock Grid.Column="0" Text="Heures jouées" VerticalAlignment="Center" Margin="0,4" />
+            <NumericUpDown Grid.Column="1" x:Name="TrHoursBox" Minimum="0" Maximum="9999" Margin="0,4,8,4" />
+            <TextBlock Grid.Column="2" Text="Minutes" VerticalAlignment="Center" Margin="0,4" />
+            <NumericUpDown Grid.Column="3" x:Name="TrMinutesBox" Minimum="0" Maximum="59" Margin="0,4" />
+          </Grid>
+          <Button x:Name="TrApplyButton" Content="✔ Appliquer les infos dresseur" HorizontalAlignment="Left" Margin="0,8,0,0" />
+        </StackPanel>
+      </ScrollViewer>
+    </TabItem>
+    </TabControl>
 
     <!-- Barre de statut -->
     <Border Grid.Row="2" Padding="8,4" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">

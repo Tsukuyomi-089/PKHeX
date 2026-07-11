@@ -23,4 +23,11 @@
     <ProjectReference Include="..\PKHeX.Core\PKHeX.Core.csproj" />
   </ItemGroup>
 
+  <!-- Sprites natifs : on embarque les PNG bruts (chargés via SkiaSharp/Avalonia,
+       sans passer par System.Drawing.Common qui est Windows-only). -->
+  <ItemGroup>
+    <AvaloniaResource Include="..\PKHeX.Drawing.PokeSprite\Resources\img\Big Pokemon Sprites\*.png" Link="Assets/sprites/%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\PKHeX.Drawing.PokeSprite\Resources\img\Big Shiny Sprites\*.png" Link="Assets/sprites/shiny/%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
