@@ -1,0 +1,70 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PKHeX.Avalonia.MainWindow"
+        Width="900" Height="600"
+        Title="PKHeX (Avalonia · natif Linux)">
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Barre d'outils -->
+    <Border Grid.Row="0" Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button x:Name="OpenButton" Content="📂 Ouvrir une sauvegarde…" />
+        <Button x:Name="SaveButton" Content="💾 Exporter…" IsEnabled="False" />
+        <Separator />
+        <TextBlock x:Name="SaveInfo" VerticalAlignment="Center"
+                   Text="Aucune sauvegarde chargée." />
+      </StackPanel>
+    </Border>
+
+    <!-- Contenu principal -->
+    <Grid Grid.Row="1" ColumnDefinitions="320,*" Margin="8">
+
+      <!-- Panneau gauche : sélection de boîte + liste -->
+      <DockPanel Grid.Column="0" Margin="0,0,8,0">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBlock Text="Boîte :" VerticalAlignment="Center" />
+          <ComboBox x:Name="BoxSelector" Width="220" IsEnabled="False" />
+        </StackPanel>
+        <ListBox x:Name="SlotList" />
+      </DockPanel>
+
+      <!-- Panneau droit : éditeur -->
+      <Border Grid.Column="1" BorderThickness="1" CornerRadius="6"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" Padding="16">
+        <ScrollViewer>
+          <StackPanel x:Name="EditorPanel" Spacing="12" IsEnabled="False">
+            <TextBlock Text="Éditeur de Pokémon" FontSize="18" FontWeight="Bold" />
+
+            <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Espèce" VerticalAlignment="Center" Margin="0,5" />
+              <ComboBox   Grid.Row="0" Grid.Column="1" x:Name="SpeciesBox" HorizontalAlignment="Stretch" Margin="0,5" />
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Niveau" VerticalAlignment="Center" Margin="0,5" />
+              <NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="LevelBox" Minimum="1" Maximum="100" Increment="1" Margin="0,5" />
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Text="Surnom" VerticalAlignment="Center" Margin="0,5" />
+              <TextBox    Grid.Row="2" Grid.Column="1" x:Name="NicknameBox" Margin="0,5" />
+
+              <TextBlock Grid.Row="3" Grid.Column="0" Text="Nature" VerticalAlignment="Center" Margin="0,5" />
+              <ComboBox   Grid.Row="3" Grid.Column="1" x:Name="NatureBox" HorizontalAlignment="Stretch" Margin="0,5" />
+
+              <TextBlock Grid.Row="4" Grid.Column="0" Text="Dresseur (OT)" VerticalAlignment="Center" Margin="0,5" />
+              <TextBox    Grid.Row="4" Grid.Column="1" x:Name="OtBox" Margin="0,5" />
+
+              <TextBlock Grid.Row="5" Grid.Column="0" Text="Chromatique" VerticalAlignment="Center" Margin="0,5" />
+              <TextBlock  Grid.Row="5" Grid.Column="1" x:Name="ShinyLabel" VerticalAlignment="Center" Margin="0,5" />
+            </Grid>
+
+            <Button x:Name="ApplyButton" Content="✔ Appliquer au slot" HorizontalAlignment="Left" />
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- Barre de statut -->
+    <Border Grid.Row="2" Padding="8,4" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+      <TextBlock x:Name="StatusBar" Text="Prêt." />
+    </Border>
+  </Grid>
+</Window>
