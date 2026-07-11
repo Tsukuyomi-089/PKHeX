@@ -22,6 +22,8 @@ public partial class MainWindow : Window
     private IReadOnlyList<string> _balls = [];
     private IReadOnlyList<string> _moves = [];
     private SlotEntry? _current;
+    private PlayerBag? _bag;
+    private ushort[] _pouchItemIds = [];
 
     public MainWindow()
     {
@@ -55,7 +57,11 @@ public partial class MainWindow : Window
         ShinyButton.Click += OnShinyClick;
         ImportButton.Click += OnImportClick;
         ExportButton.Click += OnExportClick;
+        ClearButton.Click += OnClearSlotClick;
         TrApplyButton.Click += OnTrainerApplyClick;
+        PouchSelector.SelectionChanged += OnPouchChanged;
+        ItemSetButton.Click += OnItemSetClick;
+        InvApplyButton.Click += OnInventoryApplyClick;
         BoxSelector.SelectionChanged += OnBoxChanged;
         SlotList.SelectionChanged += OnSlotSelected;
     }
@@ -153,7 +159,134 @@ public partial class MainWindow : Window
         TrHoursBox.Value = sav.PlayedHours;
         TrMinutesBox.Value = sav.PlayedMinutes;
 
+        // Onglet Inventaire
+        LoadInventory(sav);
+
         Status($"Sauvegarde chargée : {Path.GetFileName(_path) ?? sav.Version.ToString()}");
+    }
+
+    private void LoadInventory(SaveFile sav)
+    {
+        _bag = sav.Inventory;
+        var pouches = _bag.Pouches;
+        if (pouches.Count == 0)
+        {
+            InventoryPanel.IsEnabled = false;
+            PouchSelector.ItemsSource = null;
+            ItemListView.ItemsSource = null;
+            return;
+        }
+
+        InventoryPanel.IsEnabled = true;
+        var names = new List<string>();
+        foreach (var p in pouches)
+            names.Add($"{p.Type} ({p.Count})");
+        PouchSelector.ItemsSource = names;
+        PouchSelector.SelectedIndex = 0;
+    }
+
+    private void OnPouchChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_bag is null || PouchSelector.SelectedIndex < 0 || PouchSelector.SelectedIndex >= _bag.Pouches.Count)
+            return;
+        var pouch = _bag.Pouches[PouchSelector.SelectedIndex];
+
+        // Liste des objets présents
+        var rows = new List<string>();
+        foreach (var it in pouch.Items)
+        {
+            if (it.Count <= 0 || it.Index <= 0)
+                continue;
+            var name = it.Index < _items.Count ? _items[it.Index] : $"#{it.Index}";
+            rows.Add($"{name}  ×{it.Count}");
+        }
+        ItemListView.ItemsSource = rows.Count > 0 ? rows : new List<string> { "(poche vide)" };
+
+        // Sélecteur d'objets valides pour cette poche
+        var valid = pouch.GetAllItems();
+        _pouchItemIds = valid.ToArray();
+        var pickerNames = new List<string>(_pouchItemIds.Length);
+        foreach (var id in _pouchItemIds)
+            pickerNames.Add(id < _items.Count ? _items[id] : $"#{id}");
+        ItemPicker.ItemsSource = pickerNames;
+        if (pickerNames.Count > 0)
+            ItemPicker.SelectedIndex = 0;
+    }
+
+    private void OnItemSetClick(object? sender, RoutedEventArgs e)
+    {
+        if (_bag is null || PouchSelector.SelectedIndex < 0 || ItemPicker.SelectedIndex < 0)
+            return;
+        var pouch = _bag.Pouches[PouchSelector.SelectedIndex];
+        ushort id = _pouchItemIds[ItemPicker.SelectedIndex];
+        int count = Val(ItemCount, 0);
+
+        // Objet déjà présent ?
+        InventoryItem? existing = null;
+        foreach (var it in pouch.Items)
+        {
+            if (it.Index == id)
+            {
+                existing = it;
+                break;
+            }
+        }
+
+        if (existing is not null)
+        {
+            if (count <= 0)
+                existing.Clear();
+            else
+                existing.Count = count;
+        }
+        else if (count > 0)
+        {
+            // Premier emplacement libre
+            InventoryItem? free = null;
+            foreach (var it in pouch.Items)
+            {
+                if (it.Index == 0 || it.Count == 0)
+                {
+                    free = it;
+                    break;
+                }
+            }
+            if (free is null)
+            {
+                Status("Poche pleine : aucun emplacement libre.");
+                return;
+            }
+            free.Index = id;
+            free.Count = count;
+        }
+
+        int keep = PouchSelector.SelectedIndex;
+        OnPouchChanged(null, null!);
+        PouchSelector.SelectedIndex = keep;
+        Status($"Objet défini : {_items[id]} ×{count} (Appliquer pour enregistrer).");
+    }
+
+    private void OnInventoryApplyClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav || _bag is null)
+            return;
+        _bag.CopyTo(sav);
+        // Rafraîchit les compteurs de poches
+        LoadInventory(sav);
+        Status("Inventaire appliqué (Exporter pour enregistrer sur disque).");
+    }
+
+    private void OnClearSlotClick(object? sender, RoutedEventArgs e)
+    {
+        if (_sav is not { } sav || _current is not { } entry)
+            return;
+        var blank = sav.BlankPKM;
+        if (entry.IsParty)
+            sav.SetPartySlotAtIndex(blank, entry.Slot);
+        else
+            sav.SetBoxSlotAtIndex(blank, entry.Box, entry.Slot);
+        OnBoxChanged(null, null!);
+        Status("Emplacement vidé.");
     }
 
     private void OnTrainerApplyClick(object? sender, RoutedEventArgs e)

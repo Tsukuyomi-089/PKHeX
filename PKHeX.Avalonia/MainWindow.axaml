@@ -142,6 +142,7 @@
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Stretch">
               <Button x:Name="ImportButton" Content="⬇ Importer .pk…" />
               <Button x:Name="ExportButton" Content="⬆ Exporter .pk…" />
+              <Button x:Name="ClearButton" Content="🗑 Vider le slot" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
@@ -190,6 +191,32 @@
           <Button x:Name="TrApplyButton" Content="✔ Appliquer les infos dresseur" HorizontalAlignment="Left" Margin="0,8,0,0" />
         </StackPanel>
       </ScrollViewer>
+    </TabItem>
+
+    <!-- Onglet Inventaire -->
+    <TabItem Header="Inventaire">
+      <Grid x:Name="InventoryPanel" Margin="16" IsEnabled="False" RowDefinitions="Auto,Auto,*,Auto,Auto"
+            ColumnDefinitions="*" MaxWidth="640" HorizontalAlignment="Left">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+          <TextBlock Text="Poche :" VerticalAlignment="Center" />
+          <ComboBox x:Name="PouchSelector" Width="240" />
+        </StackPanel>
+        <TextBlock Grid.Row="1" Text="Objets actuels" FontWeight="Bold" Margin="0,0,0,4" />
+        <ListBox Grid.Row="2" x:Name="ItemListView" MinHeight="240" />
+        <Border Grid.Row="3" Margin="0,10,0,0" Padding="10" BorderThickness="1" CornerRadius="6"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Ajouter / modifier un objet" FontWeight="Bold" />
+            <Grid ColumnDefinitions="*,110,110">
+              <ComboBox   Grid.Column="0" x:Name="ItemPicker" HorizontalAlignment="Stretch" Margin="0,0,8,0" />
+              <NumericUpDown Grid.Column="1" x:Name="ItemCount" Minimum="0" Maximum="9999" Value="1" Margin="0,0,8,0" />
+              <Button     Grid.Column="2" x:Name="ItemSetButton" Content="Définir" HorizontalAlignment="Stretch" />
+            </Grid>
+            <TextBlock Text="Quantité 0 = retirer l'objet." Opacity="0.7" FontSize="12" />
+          </StackPanel>
+        </Border>
+        <Button Grid.Row="4" x:Name="InvApplyButton" Content="✔ Appliquer l'inventaire" HorizontalAlignment="Left" Margin="0,10,0,0" />
+      </Grid>
     </TabItem>
     </TabControl>
 

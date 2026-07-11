@@ -33,7 +33,9 @@ dotnet run --project PKHeX.Avalonia/PKHeX.Avalonia.csproj -c Release
 - Bouton **✨ Rendre chromatique**
 - **Analyse de légalité** en direct (`LegalityAnalysis`) avec rapport détaillé
 - **Import / Export d'un Pokémon** (`.pk*`) avec conversion automatique au format de la save
+- **Vider un emplacement** (🗑)
 - Onglet **Dresseur** : nom OT, TID/SID, genre, argent, temps de jeu
+- Onglet **Inventaire** : édition des poches (ajout / modification / retrait d'objets)
 - 💾 Exporter la sauvegarde modifiée
 
 Noms (espèces, natures, talents, objets, capacités) affichés en **français**.
@@ -47,7 +49,7 @@ et décodés par **SkiaSharp** via `Avalonia.Media.Imaging.Bitmap` — on contou
 ## Périmètre / limites
 
 Base de portage ciblée sur les cas d'usage principaux, **pas** un portage 1:1 des 154 formulaires
-WinForms. Manquent encore : éditeur d'inventaire/Pokédex, glisser-déposer entre slots, édition en
-masse (batch), légalisation automatique (nécessite le paquet externe *AutoLegalityMod*, absent de
+WinForms. Manquent encore : éditeur de Pokédex, glisser-déposer entre slots, édition en masse
+(batch), légalisation automatique (nécessite le paquet externe *AutoLegalityMod*, absent de
 `PKHeX.Core`). Chaque ajout consiste à brancher des contrôles Avalonia sur les propriétés/API de
 `PKHeX.Core` déjà disponibles.
